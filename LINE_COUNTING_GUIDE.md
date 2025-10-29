@@ -1,18 +1,20 @@
-# Line Counting Guide - Regular Tracking System
+# Line Counting Guide - Enhanced Tracking System
 
-This guide explains how to track lines of code generated on a regular basis using the same rules as **CODE_GENERATION_DETAILED_COUNT.md**.
+This guide explains how to track lines of code generated on a regular basis with enhanced capabilities including code/document separation, major edit detection, and flexible date range queries.
 
 ---
 
 ## Line Counting Rules
 
-These are the same rules from CODE_GENERATION_DETAILED_COUNT.md:
+The system follows 7 comprehensive rules:
 
-1. ✓ Each file creation counts all lines in the file
-2. ✓ Each edit counts only the lines changed
-3. ✓ Multiple edits to the same file are counted separately
-4. ✓ Comments and blank lines are included (part of code structure)
-5. ✓ All file types counted: .py, .md, .sh, .txt
+1. ✓ **Each file creation counts all lines in the file**
+2. ✓ **Each edit counts only the lines changed**
+3. ✓ **Multiple edits to the same file are counted separately**
+4. ✓ **Major edits (>50% changed) count as new file + edited lines**
+5. ✓ **Comments and blank lines are included** (part of code structure)
+6. ✓ **All file types counted**: .py, .md, .sh, .txt, .pdf
+7. ✓ **Separate tracking**: Code (.py, .sh) vs Documents (.md, .txt, .pdf)
 
 ---
 
@@ -45,11 +47,13 @@ bash daily_line_count.sh "Implemented quantum Hydra models"
 ```
 
 **What it does:**
-1. Counts new files (all lines)
+1. Counts new files (all lines) with code/docs categorization
 2. Counts edited files (added lines only)
-3. Generates today's statistics
-4. Commits changes to Git
-5. Updates LINE_COUNT_LOG.md
+3. Detects major edits (>50% changed)
+4. Generates today's statistics
+5. Saves JSON statistics for date range queries
+6. Commits changes to Git
+7. Updates LINE_COUNT_LOG.md
 
 **Output example:**
 ```
@@ -58,18 +62,33 @@ Daily Line Count - 2025-10-27 10:30:00
 ================================================================
 
 New files created:
-  QuantumHydra.py: 820 lines
-  ClassicalHydra.py: 390 lines
-Total new file lines: 1210
+  QuantumHydra.py: 820 lines [code]
+  ClassicalHydra.py: 390 lines [code]
+  README_HYDRA.md: 150 lines [docs]
+Total new file lines: 1360 (Code: 1210, Docs: 150)
 
 Modified files:
-  compare_quantum_hydra.py: +50 lines
-Total modified lines: 50
+  compare_quantum_hydra.py: +50 lines (25% changed) [code]
+  phase1_pretrain_gpu.sh: +80 lines (65% changed - MAJOR EDIT) [code]
+Total modified lines: 130 (Code: 130, Docs: 0)
+Major edits (>50% changed): 1 files (Code: 1, Docs: 0)
 
 ================================================================
-TOTAL LINES GENERATED TODAY: 1260
-  New files:      1210 lines
-  Modifications:  50 lines
+TOTAL LINES GENERATED TODAY: 1490
+  Code (.py, .sh):         1340 lines
+  Documents (.md, .txt, .pdf): 150 lines
+
+Breakdown:
+  New files:               1360 lines
+    - Code:                1210 lines
+    - Documents:           150 lines
+  Modifications:           130 lines
+    - Code:                130 lines
+    - Documents:           0 lines
+
+  Major edits (>50%):      1 files count as new
+    - Code:                1 files
+    - Documents:           0 files
 ================================================================
 ```
 
@@ -82,8 +101,8 @@ bash view_line_stats.sh today
 # View last 7 days
 bash view_line_stats.sh week
 
-# View last 30 days
-bash view_line_stats.sh month
+# View custom date range (YYYY-MM-DD format)
+bash view_line_stats.sh 2025-10-24 2025-11-02
 
 # View all-time statistics
 bash view_line_stats.sh all
@@ -91,6 +110,12 @@ bash view_line_stats.sh all
 # View the markdown log
 bash view_line_stats.sh log
 ```
+
+**All queries show:**
+- Total lines (Code + Documents)
+- Breakdown by code (.py, .sh) vs documents (.md, .txt, .pdf)
+- New files, modifications, and major edits
+- Daily breakdown for date ranges
 
 ---
 
@@ -103,9 +128,12 @@ bash view_line_stats.sh log
 **Features:**
 - Automatically initializes Git if needed
 - Counts new and modified lines separately
+- **Categorizes files**: Code (.py, .sh) vs Documents (.md, .txt, .pdf)
+- **Detects major edits**: Files with >50% changed
+- **Saves JSON statistics**: For programmatic access and date range queries
 - Updates LINE_COUNT_LOG.md automatically
 - Commits changes with statistics in commit message
-- Shows cumulative statistics
+- Shows cumulative statistics with code/docs breakdown
 
 **When to run**: At the end of each coding session or day
 
@@ -114,11 +142,17 @@ bash view_line_stats.sh log
 **Purpose**: View statistics anytime without committing
 
 **Options:**
-- `today` - Today's changes only
-- `week` - Last 7 days summary
-- `month` - Last 30 days summary
+- `today` - Today's changes only (from JSON file)
+- `week` - Last 7 days summary with daily breakdown
+- `YYYY-MM-DD YYYY-MM-DD` - Custom date range (e.g., 2025-10-24 2025-11-02)
 - `all` - All-time statistics (default)
 - `log` - Show the markdown log file
+
+**Features:**
+- Aggregates JSON statistics across date ranges
+- Shows code vs documents breakdown
+- Daily breakdown for week and custom range queries
+- No Git operations (read-only)
 
 ### 3. LINE_COUNT_LOG.md (auto-generated)
 
@@ -128,10 +162,11 @@ bash view_line_stats.sh log
 ```markdown
 ## 2025-10-27
 
-**Total: 1260 lines**
+**Total: 1490 lines** (Code: 1340, Docs: 150)
 
-- New files: 1210 lines
-- Modifications: 50 lines
+- New files: 1360 lines (Code: 1210, Docs: 150)
+- Modifications: 130 lines (Code: 130, Docs: 0)
+- Major edits (>50%): 1 files (Code: 1, Docs: 0)
 
 <details>
 <summary>Files changed (click to expand)</summary>
@@ -143,6 +178,32 @@ M  compare_quantum_hydra.py
 
 </details>
 ```
+
+### 4. LINE_COUNT_STATS.json.YYYY-MM-DD (auto-generated)
+
+**Purpose**: Machine-readable daily statistics for date range queries
+
+**Format:**
+```json
+{
+  "date": "2025-10-27",
+  "timestamp": "2025-10-27 14:30:00",
+  "total_lines": 1490,
+  "code_lines": 1340,
+  "docs_lines": 150,
+  "new_files_lines": 1360,
+  "new_files_code": 1210,
+  "new_files_docs": 150,
+  "modified_lines": 130,
+  "modified_code": 130,
+  "modified_docs": 0,
+  "major_edits": 1,
+  "major_edits_code": 1,
+  "major_edits_docs": 0
+}
+```
+
+**Usage**: Automatically created by `daily_line_count.sh` and read by `view_line_stats.sh` for aggregation
 
 ---
 
@@ -213,11 +274,53 @@ bash view_line_stats.sh today
 bash view_line_stats.sh week
 
 # Output:
-# Last 7 days:
-# 2025-10-27 - Day 4: Fixed batch scripts (1188 lines)
-# 2025-10-26 - Day 3: Quantum Hydra implementation (6444 lines)
-# 2025-10-24 - Day 2: QCNN comparison (16708 lines)
-# 2025-10-23 - Day 1: Initial setup (11872 lines)
+# ================================================================
+# Last 7 days summary:
+# ================================================================
+# Date range: 2025-10-21 to 2025-10-28
+#
+# TOTAL: 36212 lines
+#   Code (.py, .sh):           28450 lines
+#   Documents (.md, .txt, .pdf): 7762 lines
+#
+# Breakdown:
+#   New files:                 30150 lines
+#   Modifications:             6062 lines
+#   Major edits (>50%):        12 files
+#
+# Daily breakdown:
+# ----------------
+# 2025-10-27:  1188 lines (Code:   950, Docs:   238)
+# 2025-10-26:  6444 lines (Code:  5820, Docs:   624)
+# 2025-10-24: 16708 lines (Code: 14200, Docs:  2508)
+# 2025-10-23: 11872 lines (Code:  7480, Docs:  4392)
+```
+
+### Scenario 4: Custom Date Range Query
+
+```bash
+# Query specific date range
+bash view_line_stats.sh 2025-10-24 2025-10-27
+
+# Output:
+# ================================================================
+# Date range: 2025-10-24 to 2025-10-27
+# ================================================================
+#
+# TOTAL: 24340 lines
+#   Code (.py, .sh):           20970 lines
+#   Documents (.md, .txt, .pdf): 3370 lines
+#
+# Breakdown:
+#   New files:                 20150 lines
+#   Modifications:             4190 lines
+#   Major edits (>50%):        8 files
+#
+# Daily breakdown:
+# ----------------
+# 2025-10-24: 16708 lines (Code: 14200, Docs:  2508, Major:  3)
+# 2025-10-26:  6444 lines (Code:  5820, Docs:   624, Major:  2)
+# 2025-10-27:  1188 lines (Code:   950, Docs:   238, Major:  3)
 ```
 
 ---
@@ -396,14 +499,17 @@ chmod +x log_lines.sh
 
 ## Summary
 
-**For regular line counting, use this simple workflow:**
+**For regular line counting, use this enhanced workflow:**
 
 1. **Daily**: `bash daily_line_count.sh "Description of work"`
-2. **View stats**: `bash view_line_stats.sh [today|week|month|all|log]`
-3. **Review**: Check LINE_COUNT_LOG.md periodically
+2. **View stats**: `bash view_line_stats.sh [today|week|YYYY-MM-DD YYYY-MM-DD|all|log]`
+3. **Review**: Check LINE_COUNT_LOG.md and JSON statistics periodically
 
 **Benefits:**
-- ✓ Follows exact rules from CODE_GENERATION_DETAILED_COUNT.md
+- ✓ **7 comprehensive rules** including major edit detection (>50%)
+- ✓ **Code vs document separation** (.py, .sh vs .md, .txt, .pdf)
+- ✓ **Flexible date queries** (daily, weekly, custom range)
+- ✓ **JSON statistics** for programmatic access
 - ✓ Counts each edit separately
 - ✓ Automatic and accurate
 - ✓ Historical tracking
@@ -421,7 +527,7 @@ bash daily_line_count.sh "Custom msg"   # With custom message
 # View statistics
 bash view_line_stats.sh today           # Today only
 bash view_line_stats.sh week            # Last 7 days
-bash view_line_stats.sh month           # Last 30 days
+bash view_line_stats.sh 2025-10-24 2025-11-02  # Custom date range
 bash view_line_stats.sh all             # All time (default)
 bash view_line_stats.sh log             # Show markdown log
 
@@ -429,8 +535,19 @@ bash view_line_stats.sh log             # Show markdown log
 git log --stat                          # Detailed history
 git diff --stat HEAD~1                  # Last commit stats
 git status                              # Current changes
+
+# JSON statistics files
+ls LINE_COUNT_STATS.json.*              # List all daily JSON stats
+cat LINE_COUNT_STATS.json.2025-10-27    # View specific day's JSON
 ```
+
+**Key Features:**
+- **7 counting rules** including major edit detection (>50% changed)
+- **Code/docs separation**: .py, .sh vs .md, .txt, .pdf
+- **Flexible queries**: daily, weekly, or custom date range
+- **JSON statistics**: Machine-readable format for automation
+- **Git-based**: Accurate tracking with full history
 
 ---
 
-*This tracking system ensures accurate, automated line counting that follows the same rules as your manual detailed count.*
+*This enhanced tracking system provides comprehensive, automated line counting with advanced categorization and flexible date queries.*
